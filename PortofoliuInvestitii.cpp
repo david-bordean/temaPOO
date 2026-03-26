@@ -319,6 +319,8 @@ int main() {
     inv.executaTranzactie(t1); 
     inv.executaTranzactie(t2); 
     inv.executaTranzactie(t3); // nu exista
+    Tranzactie t_gresit("Apple", "imprumut", 3, 150); // tip invalid
+    inv.executaTranzactie(t_gresit);
     std::cout << inv;
 
     std::cout << "=== Cautare actiuni ===\n";
