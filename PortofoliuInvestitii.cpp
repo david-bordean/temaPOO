@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cstring>
 #include <cstdlib>
 
 /*
@@ -31,10 +32,14 @@ private:
         return pretCurent > pretCumparare;
     }
 
+    static int numarActiuniCreate;
+
 public:
 
     Actiune(const std::string& n, double pc, double pInit, int c)
-        : nume(n), pretCurent(pc), pretCumparare(pInit), cantitate(c) {}
+        : nume(n), pretCurent(pc), pretCumparare(pInit), cantitate(c) {
+            numarActiuniCreate++;
+        }
 
     Actiune(const Actiune& a) {
         nume = a.nume;
@@ -55,19 +60,19 @@ public:
 
     ~Actiune() {}
 
-    double valoare() const {
+    inline double valoare() const {
         return pretCurent * cantitate;
     }
 
-    double profit() const {
+    inline double profit() const {
         return (pretCurent - pretCumparare) * cantitate;
     }
 
-    void actualizeazaPret(double procent) {
+    inline void actualizeazaPret(double procent) {
         pretCurent *= procent;
     }
 
-    void modificaCantitate(int c) {
+    inline void modificaCantitate(int c) {
         cantitate += c;
     }
 
@@ -79,6 +84,10 @@ public:
         return cantitate;
     }
 
+    void setPretCurent(double p) { pretCurent = p; }
+
+    static int getNrActiuniCreate() { return numarActiuniCreate; }
+
     friend std::ostream& operator<<(std::ostream& out, const Actiune& a) {
         out << "Actiune: " << a.nume
             << " | Pret: " << a.pretCurent
@@ -89,42 +98,59 @@ public:
     }
 };
 
+int Actiune::numarActiuniCreate = 0;
 
 
 
 class Tranzactie {
 private:
     std::string numeActiune;
-    std::string tip; // cumparare / vanzare
+    char* tip; // cumparare / vanzare
     int cantitate;
     double pret;
 
 public:
-    Tranzactie(const std::string& n, const std::string& t, int c, double p)
-        : numeActiune(n), tip(t), cantitate(c), pret(p) {}
+    Tranzactie(const std::string& n, const char* t, int c, double p)
+        : numeActiune(n), cantitate(c), pret(p) {
+            tip = new char[strlen(t) + 1];
+            strcpy(tip, t); 
+        }
 
     Tranzactie(const Tranzactie& t) {
         numeActiune = t.numeActiune;
-        tip = t.tip;
         cantitate = t.cantitate;
         pret = t.pret;
+        if (t.tip == nullptr) {
+            tip = nullptr;
+        } else {
+            tip = new char[strlen(t.tip) + 1];
+            strcpy(tip, t.tip);
+        }
     }
 
     Tranzactie& operator=(const Tranzactie& t) {
         if (this != &t) {
             numeActiune = t.numeActiune;
-            tip = t.tip;
             cantitate = t.cantitate;
             pret = t.pret;
+            delete[] tip;
+            if (t.tip == nullptr) {
+                tip = nullptr;
+            } else {
+                tip = new char[strlen(t.tip) + 1];
+                strcpy(tip, t.tip);
+            }
         }
         return *this;
     }
 
-    ~Tranzactie() {}
+    ~Tranzactie() {delete [] tip; }
 
     std::string getNume() const { return numeActiune; }
-    std::string getTip() const { return tip; }
+    std::string getTip() const { return std::string(tip); }
     int getCantitate() const { return cantitate; }
+    void setCantitate(int c) { cantitate = c; }
+
 
     friend std::ostream& operator<<(std::ostream& out, const Tranzactie& t) {
         out << "Tranzactie: " << t.tip << " " << t.cantitate
@@ -220,12 +246,19 @@ public:
         return suma;
     }
 
+    void setNume(const std::string& n) { nume = n; }
+
     friend std::ostream& operator<<(std::ostream& out, const Investitor& i) {
         out << "Investitor: " << i.nume
             << " | Actiuni in portofoliu: " << i.numarActiuni() << "\n";
         for (const Actiune& a : i.portofoliu)
             out << a << "\n";
         return out;
+    }
+
+    Investitor& operator+=(const Actiune& a) {
+    portofoliu.push_back(a);
+    return *this;
     }
 };
 
@@ -258,6 +291,8 @@ public:
         }
     }
 
+    void setActiuni(const std::vector<Actiune>& a) { actiuni = a; }
+
     friend std::ostream& operator<<(std::ostream& out, const Piata& p) {
         for (const Actiune& a : p.actiuni)
             out << a << "\n";
@@ -267,10 +302,13 @@ public:
 
 
 int main() {
+
+
     std::cout << "=== Actiuni initiale ===\n";
     Actiune a1("Apple", 150, 120, 10);
     Actiune a2("Google", 200, 180, 5);
     Actiune a3("Microsoft", 300, 320, 8);
+
     std::cout << a1 << "\n";
     std::cout << a2 << "\n";
     std::cout << a3 << "\n";
@@ -309,9 +347,9 @@ int main() {
 
     std::cout << "\n=== Portofoliu initial ===\n";
     Investitor inv("Ion Popescu");
-    inv.adaugaActiune(a1);
-    inv.adaugaActiune(a2);
-    inv.adaugaActiune(a3);
+    inv += a1;
+    inv += a2;
+    inv += a3;
     std::cout << inv;
 
 
@@ -356,6 +394,23 @@ int main() {
     Piata p_asignat = p;
     std::cout << "Copie piata:\n" << p_copie;
     std::cout << "Asignat piata:\n" << p_asignat;
+
+    std::cout << "Total actiuni create: " << Actiune::getNrActiuniCreate() << "\n";
+
+
+    std::cout << "\n=== Testare setteri ===\n";
+    a1.setPretCurent(160);
+    std::cout << "Apple dupa setteri: " << a1 << "\n";
+
+    t1.setCantitate(10);
+    std::cout << "Tranzactie dupa setteri: " << t1 << "\n";
+
+    inv.setNume("Gheorghe Popescu");
+    std::cout << "Investitor dupa setter nume: " << inv;
+
+    std::vector<Actiune> listaNoua = { a1, a2 };
+    p.setActiuni(listaNoua);
+    std::cout << "Piata dupa setter actiuni:\n" << p;
 
     return 0;
 }
